@@ -176,7 +176,13 @@ export function toUrlEvidence(rawUrl: string, retainPath: boolean): UrlEvidence 
   if ((url.protocol === 'https:' && url.port === '443') || (url.protocol === 'http:' && url.port === '80')) {
     url.port = '';
   }
-  const path = stripControlCharacters(decodeURI(url.pathname || '/'), 1_024);
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURI(url.pathname || '/');
+  } catch {
+    decodedPath = url.pathname || '/';
+  }
+  const path = stripControlCharacters(decodedPath, 1_024);
   const evidence: UrlEvidence = {
     scheme: url.protocol.slice(0, -1) as UrlEvidence['scheme'],
     origin: url.origin,

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { chromium, type Browser, type BrowserContext, type Page, type Request, type Response } from 'playwright';
 import {
+  LIMITS,
   NORMALIZATION_VERSION,
   type CaptureSnapshot,
   type ComponentIdentification,
@@ -145,6 +146,7 @@ async function collectPage(
   route: string,
   observedAt: string,
   guard: DestinationGuard,
+  observationByteBudget: number,
   redirectProbe?: RedirectProbe,
 ): Promise<PageCollection> {
   const pageId = shortId('page', `${target.id}:${route}`);
@@ -163,14 +165,51 @@ async function collectPage(
   const requestKeys = new Map<string, string>();
   const resourceByUrl = new Map<string, ResourceObservation>();
   const pendingResponses = new Set<Promise<void>>();
+  const pendingRedirectChecks = new Set<Promise<void>>();
+  const redirectedRequests = new WeakSet<Request>();
   let popupAttempts = 0;
   let redirectCount = 0;
   let retainedObservationBytes = 0;
   let budgetReached = false;
   let timedOut = false;
   let navigationFailed = false;
+  let observationFailed = false;
   let totalNetworkRequests = 0;
   const navigationUrl = new URL(route, target.origin).toString();
+
+  function noteLimitation(message: string): void {
+    if (limitations.length < 32 && !limitations.includes(message)) limitations.push(message);
+  }
+
+  function retainObservation<T>(collection: T[], value: T, maximum: number, label: string): boolean {
+    if (collection.length >= maximum) {
+      budgetReached = true;
+      noteLimitation(`${label} collection budget exhausted.`);
+      return false;
+    }
+    const bytes = observationBytes(value);
+    if (retainedObservationBytes + bytes > observationByteBudget) {
+      budgetReached = true;
+      noteLimitation('Observation byte budget exhausted.');
+      return false;
+    }
+    collection.push(value);
+    retainedObservationBytes += bytes;
+    return true;
+  }
+
+  function retainComponents(matches: ComponentIdentification[]): void {
+    for (const match of matches) {
+      if (!retainObservation(components, match, LIMITS.observationsPerCategory, 'Component')) break;
+    }
+  }
+
+  function countRedirect(request: Request): void {
+    if (request.redirectedFrom() && !redirectedRequests.has(request)) {
+      redirectedRequests.add(request);
+      redirectCount += 1;
+    }
+  }
 
   const context = await browser.newContext({
     acceptDownloads: false,
@@ -194,7 +233,7 @@ async function collectPage(
     totalNetworkRequests += 1;
     if (totalNetworkRequests > target.budgets.maxRequestsPerRoute) {
       budgetReached = true;
-      limitations.push('Request budget exhausted.');
+      noteLimitation('Request budget exhausted.');
       await intercepted.abort('blockedbyclient');
       return;
     }
@@ -202,7 +241,7 @@ async function collectPage(
     const existing = requestKeys.get(key);
     const requestId = existing ?? shortId('request', `${pageId}:${key}`);
     requestIds.set(request, requestId);
-    if (request.redirectedFrom()) redirectCount += 1;
+    countRedirect(request);
 
     let state: RequestObservation['state'] = 'success';
     let completeness: RequestObservation['completeness'] = 'complete';
@@ -241,17 +280,12 @@ async function collectPage(
         truncation: { truncated: false },
         ...(blockedReason ? { blockedReason } : {}),
       };
-      const bytes = observationBytes(observation);
-      if (retainedObservationBytes + bytes > target.budgets.maxTotalObservationBytes) {
-        budgetReached = true;
-        limitations.push('Observation byte budget exhausted.');
+      if (!retainObservation(requests, observation, LIMITS.observationsPerCategory, 'Request')) {
         await intercepted.abort('blockedbyclient');
         return;
       }
-      retainedObservationBytes += bytes;
-      requests.push(observation);
       requestKeys.set(key, requestId);
-      edges.push({
+      retainObservation(edges, {
         ...base(observedAt, 'derived'),
         schemaVersion: 'scriptledger.dependency-edge.v1',
         edgeId: shortId('edge', `${pageId}:${destination.origin}`),
@@ -260,41 +294,111 @@ async function collectPage(
         to: shortId('origin', destination.origin),
         relationship: request.redirectedFrom() ? 'redirected_to' : 'requested',
         evidenceReferences: [requestId],
-      });
+      }, LIMITS.observationsPerCategory, 'Dependency edge');
     }
 
-    if (blockedReason) await intercepted.abort('blockedbyclient');
+    if (blockedReason || budgetReached) await intercepted.abort('blockedbyclient');
     else await intercepted.continue();
   });
 
+  await context.routeWebSocket('**/*', async (routedSocket) => {
+    totalNetworkRequests += 1;
+    if (totalNetworkRequests > target.budgets.maxRequestsPerRoute) {
+      budgetReached = true;
+      noteLimitation('Request budget exhausted.');
+      await routedSocket.close({ code: 1008, reason: 'Collection budget exhausted' });
+      return;
+    }
+
+    let state: WebSocketObservation['state'] = 'success';
+    let completeness: WebSocketObservation['completeness'] = 'complete';
+    try {
+      await guard.assertAllowed(routedSocket.url());
+    } catch (error) {
+      state = 'blocked';
+      completeness = 'partial';
+      noteLimitation(`WebSocket blocked: ${stripControlCharacters(error instanceof Error ? error.message : 'unsafe destination', 256)}`);
+    }
+
+    try {
+      const destination = toUrlEvidence(routedSocket.url(), target.retainQueryFreePaths);
+      retainObservation(websockets, {
+        ...base(observedAt, 'browser_network'),
+        schemaVersion: 'scriptledger.websocket-observation.v1',
+        websocketId: shortId('websocket', `${pageId}:${destination.origin}:${destination.pathHash}`),
+        pageId,
+        destination,
+        framesRetained: false,
+        state,
+        completeness,
+      }, LIMITS.observationsPerCategory, 'WebSocket');
+    } catch {
+      state = 'blocked';
+      completeness = 'partial';
+      noteLimitation('WebSocket destination could not be retained safely.');
+    }
+
+    if (state === 'blocked' || budgetReached) {
+      await routedSocket.close({ code: 1008, reason: 'Destination blocked' });
+    } else {
+      routedSocket.connectToServer();
+    }
+  });
+
   const page = await context.newPage();
+  page.setDefaultTimeout(target.budgets.maxPageLifetimeMs);
+  page.setDefaultNavigationTimeout(target.budgets.maxPageLifetimeMs);
+  const lifetimeTimer = setTimeout(() => {
+    timedOut = true;
+    noteLimitation('Page lifetime budget exhausted.');
+    void page.close();
+  }, target.budgets.maxPageLifetimeMs);
+  lifetimeTimer.unref();
+
+  page.on('request', (request) => {
+    if (!request.redirectedFrom()) return;
+    countRedirect(request);
+    const check = (async () => {
+      try {
+        if (redirectCount > target.budgets.maxRedirects) throw new Error('Redirect budget exhausted');
+        const destination = await guard.assertAllowed(request.url());
+        if (isTopLevelNavigation(request, page, navigationUrl) && !isAllowedNavigation(destination, target)) {
+          throw new Error('Redirect destination is outside the exact authorized route allowlist');
+        }
+      } catch (error) {
+        observationFailed = true;
+        if (isTopLevelNavigation(request, page, navigationUrl)) navigationFailed = true;
+        noteLimitation(`Redirect blocked: ${stripControlCharacters(error instanceof Error ? error.message : 'unsafe destination', 256)}`);
+        await page.close();
+      }
+    })().finally(() => pendingRedirectChecks.delete(check));
+    pendingRedirectChecks.add(check);
+  });
   page.on('dialog', (dialog) => void dialog.dismiss());
   page.on('popup', (popup) => {
-    popupAttempts += 1;
+    if (popupAttempts < 100) popupAttempts += 1;
+    else {
+      budgetReached = true;
+      noteLimitation('Popup observation budget exhausted.');
+    }
     void popup.close();
   });
   page.on('worker', (worker) => {
-    const destination = toUrlEvidence(worker.url(), target.retainQueryFreePaths);
-    workers.push({
+    let destination;
+    try {
+      destination = toUrlEvidence(worker.url(), target.retainQueryFreePaths);
+    } catch {
+      noteLimitation('A worker destination could not be retained safely.');
+    }
+    retainObservation(workers, {
       ...base(observedAt, 'browser_network'),
       schemaVersion: 'scriptledger.worker-observation.v1',
-      workerId: shortId('worker', `${pageId}:${destination.origin}:${destination.pathHash}`),
+      workerId: shortId('worker', `${pageId}:${destination?.origin ?? 'unsupported'}:${destination?.pathHash ?? workers.length}`),
       pageId,
       workerType: 'dedicated',
-      destination,
+      ...(destination ? { destination } : {}),
       blockedByPolicy: false,
-    });
-  });
-  page.on('websocket', (socket) => {
-    const destination = toUrlEvidence(socket.url(), target.retainQueryFreePaths);
-    websockets.push({
-      ...base(observedAt, 'browser_network'),
-      schemaVersion: 'scriptledger.websocket-observation.v1',
-      websocketId: shortId('websocket', `${pageId}:${destination.origin}:${destination.pathHash}`),
-      pageId,
-      destination,
-      framesRetained: false,
-    });
+    }, LIMITS.observationsPerCategory, 'Worker');
   });
 
   page.on('response', (response) => {
@@ -317,15 +421,14 @@ async function collectPage(
     const kind = eligibleResourceKind(request.resourceType());
     const resourceId = shortId('resource', `${pageId}:${destination.origin}:${destination.pathHash}:${kind}`);
     let integrity: IntegrityObservation | undefined;
+    let contentComponents: ComponentIdentification[] = [];
     const sameOrigin = destination.origin === target.origin;
     const hashEligible = sameOrigin && (kind === 'script' || kind === 'stylesheet');
     if (hashEligible && Number.isFinite(contentLength) && contentLength >= 0 && contentLength <= HASH_BODY_LIMIT) {
       try {
         const body = await response.body();
         if (body.byteLength === contentLength) {
-          if (kind === 'script') {
-            components.push(...retireAdapter.identifyContent(body.toString('utf8'), resourceId, observedAt));
-          }
+          if (kind === 'script') contentComponents = retireAdapter.identifyContent(body.toString('utf8'), resourceId, observedAt);
           integrity = {
             ...base(observedAt, 'browser_network'),
             schemaVersion: 'scriptledger.integrity-observation.v1',
@@ -336,7 +439,7 @@ async function collectPage(
           };
         }
       } catch {
-        limitations.push(`Complete body unavailable for ${resourceId}.`);
+        noteLimitation(`Complete body unavailable for ${resourceId}.`);
       }
     }
     integrity ??= {
@@ -360,15 +463,10 @@ async function collectPage(
       integrity,
     };
     if (!resourceByUrl.has(response.url())) {
-      const bytes = observationBytes(resource);
-      if (retainedObservationBytes + bytes > target.budgets.maxTotalObservationBytes) {
-        budgetReached = true;
-        limitations.push('Observation byte budget exhausted.');
-      } else {
-        resources.push(resource);
+      if (retainObservation(resources, resource, LIMITS.observationsPerCategory, 'Resource')) {
         resourceByUrl.set(response.url(), resource);
-        retainedObservationBytes += bytes;
-        if (kind === 'script') components.push(...retireAdapter.identifyUri(response.url(), resourceId, observedAt));
+        retainComponents(contentComponents);
+        if (kind === 'script') retainComponents(retireAdapter.identifyUri(response.url(), resourceId, observedAt));
       }
     }
     if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
@@ -382,22 +480,27 @@ async function collectPage(
         ['cross-origin-opener-policy', 'cross-origin-opener-policy'],
         ['cross-origin-resource-policy', 'cross-origin-resource-policy'],
       ];
-      for (const [type, name] of securityHeaders) policies.push(policy(pageId, observedAt, type, 'response_header', headers[name]));
+      for (const [type, name] of securityHeaders) {
+        if (!retainObservation(policies, policy(pageId, observedAt, type, 'response_header', headers[name]), 64, 'Policy')) break;
+      }
     }
   }
 
+  let preflightRedirectCount = 0;
   try {
-    await validateNavigationRedirects(navigationUrl, target, guard, redirectProbe);
+    const preflightSteps = await validateNavigationRedirects(navigationUrl, target, guard, redirectProbe);
+    preflightRedirectCount = Math.max(0, preflightSteps.length - 1);
     await page.goto(navigationUrl, { waitUntil: 'domcontentloaded', timeout: target.budgets.maxPageLifetimeMs });
     await page.waitForLoadState('networkidle', { timeout: Math.min(2_000, target.budgets.maxPageLifetimeMs) }).catch(() => undefined);
-    await Promise.allSettled([...pendingResponses]);
+    await Promise.allSettled([...pendingResponses, ...pendingRedirectChecks]);
   } catch (error) {
     timedOut = error instanceof Error && /timeout/iu.test(error.message);
     navigationFailed = true;
-    limitations.push(timedOut ? 'Page lifetime budget exhausted.' : `Navigation failed: ${stripControlCharacters(error instanceof Error ? error.message : 'unknown error', 256)}`);
+    noteLimitation(timedOut ? 'Page lifetime budget exhausted.' : `Navigation failed: ${stripControlCharacters(error instanceof Error ? error.message : 'unknown error', 256)}`);
   }
 
   if (!page.isClosed() && !navigationFailed) {
+    try {
     const domScripts = await page.locator('script').evaluateAll((elements) => elements.map((element) => ({
       src: element.getAttribute('src'),
       type: element.getAttribute('type'),
@@ -416,7 +519,7 @@ async function collectPage(
         if (script.integrity) resource.integrity.integrityAttribute = stripControlCharacters(script.integrity, 2_048);
         if (script.crossorigin) resource.integrity.crossoriginAttribute = stripControlCharacters(script.crossorigin, 256);
       }
-      scripts.push({
+      retainObservation(scripts, {
         ...base(observedAt, 'browser_dom'),
         schemaVersion: 'scriptledger.script-observation.v1',
         scriptId,
@@ -429,7 +532,7 @@ async function collectPage(
         defer: script.defer,
         ...(script.integrity ? { integrityAttribute: stripControlCharacters(script.integrity, 2_048) } : {}),
         ...(script.crossorigin ? { crossoriginAttribute: stripControlCharacters(script.crossorigin, 256) } : {}),
-      });
+      }, LIMITS.observationsPerCategory, 'Script');
     }
 
     const stylesheetData = await page.locator('link[rel~="stylesheet"]').evaluateAll((elements) => elements.map((element) => ({
@@ -451,7 +554,7 @@ async function collectPage(
       const url = frame.url();
       let destination;
       try { destination = url && url !== 'about:blank' ? toUrlEvidence(url, target.retainQueryFreePaths) : undefined; } catch { destination = undefined; }
-      frames.push({
+      retainObservation(frames, {
         ...base(observedAt, 'browser_dom'),
         schemaVersion: 'scriptledger.frame-observation.v1',
         frameId: shortId('frame', `${pageId}:${destination?.origin ?? 'blank'}:${destination?.pathHash ?? index}`),
@@ -459,21 +562,23 @@ async function collectPage(
         ...(destination ? { destination } : {}),
         namePresent: Boolean(frame.name()),
         sandboxTokens: [],
-      });
+      }, LIMITS.observationsPerCategory, 'Frame');
     }
 
     const cspMeta = await page.locator('meta[http-equiv]').evaluateAll((elements) => elements.map((element) => ({
       equiv: element.getAttribute('http-equiv')?.toLowerCase(),
       content: element.getAttribute('content'),
     })));
-    for (const meta of cspMeta) {
-      if (meta.equiv === 'content-security-policy') policies.push(policy(pageId, observedAt, 'content-security-policy', 'meta_element', meta.content ?? undefined));
+    for (const meta of cspMeta.slice(0, 64)) {
+      if (meta.equiv === 'content-security-policy') {
+        retainObservation(policies, policy(pageId, observedAt, 'content-security-policy', 'meta_element', meta.content ?? undefined), 64, 'Policy');
+      }
     }
     const attempts = await page.evaluate(() => (globalThis as typeof globalThis & { __scriptledgerServiceWorkerAttempts?: string[] }).__scriptledgerServiceWorkerAttempts ?? []);
     for (const [index, attempt] of attempts.slice(0, 100).entries()) {
       let destination;
       try { destination = toUrlEvidence(new URL(attempt, page.url()).toString(), target.retainQueryFreePaths); } catch { destination = undefined; }
-      workers.push({
+      retainObservation(workers, {
         ...base(observedAt, 'browser_dom'),
         schemaVersion: 'scriptledger.worker-observation.v1',
         workerId: shortId('worker', `${pageId}:service:${destination?.pathHash ?? index}`),
@@ -481,12 +586,27 @@ async function collectPage(
         workerType: 'service_worker_registration_attempt',
         ...(destination ? { destination } : {}),
         blockedByPolicy: true,
-      });
+      }, LIMITS.observationsPerCategory, 'Worker');
+    }
+    } catch (error) {
+      observationFailed = true;
+      if (error instanceof Error && /timeout/iu.test(error.message)) timedOut = true;
+      noteLimitation(`DOM observation failed: ${stripControlCharacters(error instanceof Error ? error.message : 'unknown error', 256)}`);
     }
   }
 
-  const blockedRequest = requests.some((request) => request.state !== 'success');
-  const complete = !budgetReached && !timedOut && !navigationFailed && !blockedRequest;
+  redirectCount = Math.max(redirectCount, preflightRedirectCount);
+
+  const incompleteObservation = [
+    ...requests,
+    ...resources,
+    ...scripts,
+    ...frames,
+    ...workers,
+    ...websockets,
+    ...policies,
+  ].some((observation) => observation.state !== 'success' || observation.completeness !== 'complete');
+  const complete = !budgetReached && !timedOut && !navigationFailed && !observationFailed && !incompleteObservation;
   let finalDestination;
   try {
     finalDestination = page.url() && page.url() !== 'about:blank' ? toUrlEvidence(page.url(), target.retainQueryFreePaths) : undefined;
@@ -512,10 +632,17 @@ async function collectPage(
     requestCount: totalNetworkRequests,
     retainedObservationBytes,
     limitations: [...new Set(limitations)].slice(0, 32),
-    state: timedOut ? 'timed_out' : budgetReached ? 'budget_exhausted' : navigationFailed ? 'failed' : blockedRequest ? 'partial' : 'success',
+    state: timedOut ? 'timed_out' : budgetReached ? 'budget_exhausted' : navigationFailed ? 'failed' : observationFailed || incompleteObservation ? 'partial' : 'success',
     completeness: complete ? 'complete' : 'partial',
-    truncation: { truncated: budgetReached, ...(budgetReached ? { reason: limitations.at(-1) ?? 'Collection budget exhausted', retainedCount: requests.length } : {}) },
+    truncation: {
+      truncated: budgetReached,
+      ...(budgetReached ? {
+        reason: limitations.at(-1) ?? 'Collection budget exhausted',
+        retainedCount: requests.length + resources.length + scripts.length + frames.length + workers.length + websockets.length + policies.length,
+      } : {}),
+    },
   };
+  clearTimeout(lifetimeTimer);
   await context.close();
   return { page: pageObservation, edges, components };
 }
@@ -529,12 +656,23 @@ export async function captureTarget(target: TargetConfig, options: CollectorOpti
   const pages: PageObservation[] = [];
   const edges: DependencyEdge[] = [];
   const components: ComponentIdentification[] = [];
+  let remainingObservationBytes = target.budgets.maxTotalObservationBytes;
   try {
     for (const route of target.routes.slice(0, target.budgets.maxNavigations)) {
-      const collected = await collectPage(browser, target, route, observedAt, guard, options.redirectProbe);
+      if (remainingObservationBytes <= 0) break;
+      const collected = await collectPage(
+        browser,
+        target,
+        route,
+        observedAt,
+        guard,
+        remainingObservationBytes,
+        options.redirectProbe,
+      );
       pages.push(collected.page);
       edges.push(...collected.edges);
       components.push(...collected.components);
+      remainingObservationBytes -= collected.page.retainedObservationBytes;
     }
     const browserVersion = browser.version();
     const limitsReached = pages.flatMap((page) => page.limitations.filter((entry) => /budget/iu.test(entry)));

@@ -2,10 +2,13 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   DestinationGuard,
+  classifyDestination,
   isPublicAddress,
+  registrableDomain,
   stripControlCharacters,
   toUrlEvidence,
 } from '../../src/security/url.js';
+import { TargetConfigSchema } from '../../src/contracts/index.js';
 
 describe('address safety', () => {
   it.each([
@@ -84,5 +87,31 @@ describe('URL evidence minimization', () => {
         expect(evidence.origin).toBe(`https://${domain.toLowerCase()}`);
       },
     ));
+  });
+
+  it('uses public-suffix-aware registrable domains for explainable grouping', () => {
+    const target = TargetConfigSchema.parse({
+      id: 'domain-fixture',
+      origin: 'https://app.example.co.uk',
+      authorizationConfirmed: true,
+      routes: ['/'],
+      budgets: {
+        maxNavigations: 1,
+        maxRequestsPerRoute: 10,
+        maxRedirects: 1,
+        maxPageLifetimeMs: 1_000,
+        maxTotalObservationBytes: 4_096,
+      },
+      retainQueryFreePaths: true,
+      allowSameOriginHttpFallback: false,
+      expectedFirstPartyRegistrableDomains: ['example.co.uk'],
+      configuredPartnerOrigins: ['https://partner.example.net'],
+    });
+
+    expect(registrableDomain('https://static.example.co.uk/runtime.js')).toBe('example.co.uk');
+    expect(classifyDestination('https://static.example.co.uk/runtime.js', target)).toBe('related_first_party_origin');
+    expect(classifyDestination('https://partner.example.net/runtime.js', target)).toBe('configured_partner');
+    expect(classifyDestination('https://cdn.example.org/runtime.js', target)).toBe('third_party');
+    expect(classifyDestination('https://8.8.8.8/runtime.js', target)).toBe('ip_literal');
   });
 });

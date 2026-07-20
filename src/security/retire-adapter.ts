@@ -20,6 +20,7 @@ interface RetireModule {
 
 const require = createRequire(import.meta.url);
 const retire = require('retire') as RetireModule;
+export const RETIRE_ADAPTER_VERSION = 'scriptledger.retire-adapter.v1';
 
 // A deliberately small, versioned subset of public Retire.js extractors. The adapter can accept a
 // separately reviewed repository snapshot without changing capture contracts or network behavior.
@@ -94,7 +95,7 @@ export class RetireAdapter {
         componentId: `component:${createHash('sha256').update(`${resourceId}:${match.component}:${match.version ?? 'unknown'}:${method}`).digest('hex').slice(0, 20)}`,
         resourceId,
         detector: 'retire.js',
-        detectorVersion: retire.version,
+        detectorVersion: `${RETIRE_ADAPTER_VERSION}/retire.js@${retire.version}/${this.repositoryVersion}`,
         identificationMethod: method,
         component: match.component.slice(0, 256),
         ...(match.version ? { version: match.version.slice(0, 256) } : {}),

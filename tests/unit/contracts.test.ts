@@ -32,6 +32,7 @@ describe('target contracts', () => {
     ['an unbounded route wildcard', { routes: ['/*'] }],
     ['a query-bearing route', { routes: ['/help?token=secret'] }],
     ['a non-HTTPS origin', { origin: 'http://portal.example.invalid' }],
+    ['a non-origin partner URL', { configuredPartnerOrigins: ['https://user:secret@partner.example.invalid/path'] }],
   ])('rejects %s', (_label, change) => {
     expect(() => TargetConfigSchema.parse({ ...validTarget, ...change })).toThrow();
   });

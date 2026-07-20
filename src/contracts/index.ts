@@ -128,6 +128,17 @@ const queryFreeRoute = z.string().min(1).max(1_024).superRefine((value, context)
   }
 });
 
+const exactPartnerOrigin = z.url().superRefine((value, context) => {
+  const url = new URL(value);
+  if (!['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)) {
+    context.addIssue({ code: 'custom', message: 'Partner origin must use an allowed network scheme' });
+  }
+  if (url.username || url.password) context.addIssue({ code: 'custom', message: 'Partner origin credentials are prohibited' });
+  if (url.pathname !== '/' || url.search || url.hash) {
+    context.addIssue({ code: 'custom', message: 'Partner origin must not include a path, query, or fragment' });
+  }
+});
+
 export const TargetConfigSchema = z
   .object({
     id: z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9-]*$/),
@@ -141,7 +152,7 @@ export const TargetConfigSchema = z
       .array(z.string().min(1).max(253).regex(/^[a-z0-9.-]+$/i))
       .max(16)
       .default([]),
-    configuredPartnerOrigins: z.array(z.url()).max(32).default([]),
+    configuredPartnerOrigins: z.array(exactPartnerOrigin).max(32).default([]),
   })
   .strict();
 

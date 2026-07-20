@@ -96,6 +96,65 @@ describe('bounded browser collection', () => {
     }
   });
 
+  it('blocks and records a WebSocket whose resolved destination is non-public', async () => {
+    const browser = await fixtureBrowser();
+    try {
+      const snapshot = await captureTarget(target(), {
+        browser,
+        allowedPrivateFixtureHosts: new Set(['localhost']),
+        resolver: async () => [{ address: '10.0.0.9', family: 4 }],
+        redirectProbe: async () => ({ status: 200 }),
+        now: () => new Date('2026-07-20T08:00:00.000Z'),
+      });
+      const blocked = snapshot.pages[0]?.websockets.find((socket) => socket.state === 'blocked');
+      expect(blocked?.destination.origin).toBe(fixture.thirdPartyWebSocketOrigin);
+      expect(blocked?.framesRetained).toBe(false);
+      expect(snapshot.completeness).toBe('partial');
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it('enforces the total observation-byte budget across multiple routes', async () => {
+    const browser = await fixtureBrowser();
+    try {
+      const byteLimit = 4_096;
+      const snapshot = await captureTarget(target({
+        routes: ['/', '/frame'],
+        budgets: { ...target().budgets, maxNavigations: 2, maxTotalObservationBytes: byteLimit },
+      }), {
+        browser,
+        allowedPrivateFixtureHosts: new Set(['localhost', 'third-party.example']),
+        redirectProbe: async () => ({ status: 200 }),
+        now: () => new Date('2026-07-20T08:00:00.000Z'),
+      });
+      expect(snapshot.pages.reduce((total, page) => total + page.retainedObservationBytes, 0)).toBeLessThanOrEqual(byteLimit);
+      expect(snapshot.completeness).toBe('partial');
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it('revalidates and counts an allowlisted browser redirect', async () => {
+    const browser = await fixtureBrowser();
+    try {
+      const snapshot = await captureTarget(target({
+        routes: ['/redirect', '/'],
+        budgets: { ...target().budgets, maxNavigations: 2 },
+      }), {
+        browser,
+        allowedPrivateFixtureHosts: new Set(['localhost', 'third-party.example']),
+        redirectProbe: async (url) => url.pathname === '/redirect'
+          ? { status: 302, location: '/' }
+          : { status: 200 },
+        now: () => new Date('2026-07-20T08:00:00.000Z'),
+      });
+      expect(snapshot.pages.find((page) => page.route === '/redirect')?.redirectCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      await browser.close();
+    }
+  });
+
   it('marks page lifetime exhaustion without discarding the navigation evidence', async () => {
     const browser = await fixtureBrowser();
     try {

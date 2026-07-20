@@ -6,6 +6,7 @@ export interface FixtureSite {
   port: number;
   origin: string;
   thirdPartyOrigin: string;
+  thirdPartyWebSocketOrigin: string;
   close(): Promise<void>;
 }
 
@@ -88,14 +89,14 @@ export async function startFixtureSite(): Promise<FixtureSite> {
             fetch('/api/data?account=not-retained');
             new Worker('/worker.js');
             navigator.serviceWorker?.register('/service-worker.js').catch(() => {});
-            const socket = new WebSocket('ws://localhost:${port}/socket?credential=not-retained');
+            const socket = new WebSocket('ws://third-party.example:${port}/socket?credential=not-retained');
             socket.addEventListener('open', () => socket.close());
             window.open('/popup', '_blank');
             document.querySelector('form').submit();
           </script>
         </body></html>`;
       send(response, 200, 'text/html', html, {
-        'content-security-policy': `default-src 'self'; script-src 'self' 'unsafe-inline' ${thirdPartyOrigin}; connect-src 'self' ws://localhost:${port}; object-src 'none'; frame-ancestors 'none'; base-uri 'none'`,
+        'content-security-policy': `default-src 'self'; script-src 'self' 'unsafe-inline' ${thirdPartyOrigin}; connect-src 'self' ws://third-party.example:${port}; object-src 'none'; frame-ancestors 'none'; base-uri 'none'`,
         'content-security-policy-report-only': "default-src 'self'; script-src 'self'",
         'referrer-policy': 'no-referrer',
         'permissions-policy': 'camera=(), microphone=(), geolocation=()',
@@ -126,6 +127,7 @@ export async function startFixtureSite(): Promise<FixtureSite> {
     port,
     origin: `http://localhost:${port}`,
     thirdPartyOrigin: `http://third-party.example:${port}`,
+    thirdPartyWebSocketOrigin: `ws://third-party.example:${port}`,
     async close() {
       websocketServer.close();
       server.close();

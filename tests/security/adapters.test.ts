@@ -15,6 +15,7 @@ describe('Retire.js adapter', () => {
       confidence: 'low',
       completeness: 'partial',
     });
+    expect(results[0]?.detectorVersion).toMatch(/^scriptledger\.retire-adapter\.v1\/retire\.js@/u);
   });
 
   it('labels bounded complete content signatures as high confidence', () => {
