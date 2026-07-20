@@ -140,10 +140,10 @@ export class DestinationGuard {
     if (url.username || url.password) throw new Error('Credentials in URLs are prohibited');
     if (url.hash) throw new Error('URL fragments are prohibited');
     const hostname = domainToASCII(url.hostname.toLowerCase());
+    if (this.#allowedPrivateFixtureHosts.has(hostname)) return url;
     if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost')) {
       throw new Error('Localhost destinations are prohibited');
     }
-    if (this.#allowedPrivateFixtureHosts.has(hostname)) return url;
 
     const family = isIP(hostname);
     if (family !== 0) {
@@ -169,6 +169,9 @@ export class DestinationGuard {
 
 export function toUrlEvidence(rawUrl: string, retainPath: boolean): UrlEvidence {
   const url = new URL(stripControlCharacters(rawUrl));
+  if (!['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)) {
+    throw new Error(`URL scheme ${url.protocol} cannot be retained as network evidence`);
+  }
   url.hostname = domainToASCII(url.hostname.toLowerCase());
   if ((url.protocol === 'https:' && url.port === '443') || (url.protocol === 'http:' && url.port === '80')) {
     url.port = '';
