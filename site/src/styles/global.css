@@ -65,7 +65,7 @@ h3 { margin: 0; font-size: 1rem; }
 .card .meta { margin: 0 0 .9rem; color: var(--accent); font: .7rem var(--mono); text-transform: uppercase; letter-spacing: .08em; }
 .event-card { display: grid; gap: .8rem; }
 .event-card code, code { font-family: var(--mono); font-size: .82em; color: #d7e5dc; }
-.state { display: inline-flex; width: fit-content; padding: .24rem .45rem; border: 1px solid #51645a; color: #c4d1ca; font: 700 .68rem var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.state { display: inline-flex; align-self: start; width: fit-content; padding: .24rem .45rem; border: 1px solid #51645a; color: #c4d1ca; font: 700 .68rem var(--mono); text-transform: uppercase; letter-spacing: .05em; }
 .state[data-state="complete"], .state[data-state="success"], .state[data-state="first_party_origin"] { border-color: #4c7b36; color: #c9efaa; }
 .state[data-state="partial"], .state[data-state="configured_partner"], .state[data-state="low"] { border-color: #81652c; color: #ffe09a; }
 .state[data-state="third_party"], .state[data-state="matched"] { border-color: #814343; color: #ffb4b4; }

@@ -29,6 +29,21 @@ test.describe('synthetic static report', () => {
     await expect(page.locator('input[type="url"], form')).toHaveCount(0);
   });
 
+  test('change status badges keep consistent dimensions', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`${publicReportBase}/changes/`);
+
+    const sizes = await page.locator('.event-card .state[data-state="complete"]').evaluateAll((badges) =>
+      badges.map((badge) => {
+        const bounds = badge.getBoundingClientRect();
+        return `${bounds.width.toFixed(2)}x${bounds.height.toFixed(2)}`;
+      })
+    );
+
+    expect(sizes).toHaveLength(5);
+    expect(new Set(sizes).size).toBe(1);
+  });
+
   test('graph has a complete tabular alternative', async ({ page }) => {
     await page.goto(`${publicReportBase}/graph/`);
     await expect(page.getByRole('table', { name: 'Every relationship displayed in the graph.' })).toBeVisible();
