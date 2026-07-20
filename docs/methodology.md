@@ -55,6 +55,10 @@ are recorded as limitations.
 Collection time means **first observed**, not the exact time an external deployment changed. Report
 language should use forms such as “First observed in the 20 July 2026 capture.”
 
+An operator may generate an initial report from one snapshot before a baseline exists. That report
+shows the captured inventory but contains no change events and states that comparison was not
+possible. Later captures can be compared normally.
+
 ## 6. Publish deliberately
 
 Validated local reports can be rendered under `.scriptledger/` with `build-report`. The committed

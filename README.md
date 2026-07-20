@@ -95,6 +95,28 @@ npm run cli -- capture targets.yml
 loopback, link-local, multicast, reserved, documentation, and cloud-metadata addresses. It does not
 make authorization decisions for you.
 
+## First report from one capture
+
+You do not need to wait for a second capture to inspect the first observation:
+
+```bash
+npm run cli -- initial-report \
+  .scriptledger/captures/<target>/<capture>/snapshot.json
+```
+
+The command writes a private report beneath
+`.scriptledger/reports/<target>/<capture>/report.json` and prints its exact path. The initial
+report contains the full captured inventory, zero change events, and an explicit limitation that no
+baseline comparison was available. Build and preview that printed report path with:
+
+```bash
+npm run cli -- build-report <printed-report-path>
+npm run preview:report
+```
+
+Use `--output <report.json>` to select another gitignored report path and
+`--generated-at <ISO timestamp>` for deterministic output.
+
 ## Compare and report
 
 ```bash
@@ -163,6 +185,11 @@ content, target favicon, live target links, or client JavaScript; their CSP sets
 
 The optional Pages workflow builds only this committed fixture and is manual by default. Enabling a
 hosting product or publishing any real report is a separate operator decision.
+
+The CodeQL workflow scans JavaScript and TypeScript on pushes to `main`, pull requests, a weekly
+schedule, and manual runs. It uses pinned actions, extended security queries, and job-scoped
+`security-events: write` permission. Its first successful run activates code-scanning results for
+the pushed repository; local captures and reports are not workflow inputs.
 
 ## Verification
 

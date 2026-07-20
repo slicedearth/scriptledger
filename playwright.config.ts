@@ -16,13 +16,13 @@ export default defineConfig({
     {
       command: 'npm run build && npm run preview',
       url: 'http://127.0.0.1:4173',
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 30_000,
     },
     {
       command: 'npm run prepare:local-report-fixture && npm run preview:local-report-fixture',
       url: 'http://127.0.0.1:4174',
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 30_000,
     },
   ],

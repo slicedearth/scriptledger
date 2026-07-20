@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { captureTarget } from '../collector/collector.js';
 import { loadCaptureConfig } from '../contracts/config.js';
 import { PublicReportSchema } from '../contracts/index.js';
 import { compareSnapshots } from '../diff/compare.js';
-import { buildPublicReport } from '../reports/public-report.js';
+import { buildInitialPublicReport, buildPublicReport } from '../reports/public-report.js';
 import { buildLocalReportSite } from '../reports/static-site.js';
 import { readSnapshot, writePublicReport, writeSnapshot } from '../storage/files.js';
 
@@ -13,6 +13,7 @@ function usage(): never {
   console.error(`Usage:
   scriptledger validate <targets.yml>
   scriptledger capture <targets.yml> [--output <directory>]
+  scriptledger initial-report <snapshot.json> [--output <report.json>] [--generated-at <ISO timestamp>]
   scriptledger compare <before.json> <after.json> [--output <report.json>] [--generated-at <ISO timestamp>]
   scriptledger report <public-report.json>
   scriptledger build-report <public-report.json> [--output <.scriptledger/name>]`);
@@ -59,6 +60,23 @@ async function main(): Promise<void> {
     const output = option('--output');
     if (output) console.log(await writePublicReport(report, output));
     else console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  if (command === 'initial-report') {
+    const path = positionals[0];
+    if (!path) usage();
+    const snapshot = await readSnapshot(resolve(path));
+    const report = buildInitialPublicReport(snapshot, {
+      generatedAt: option('--generated-at') ?? new Date().toISOString(),
+    });
+    const defaultOutput = join(
+      '.scriptledger/reports',
+      snapshot.manifest.targetId,
+      snapshot.manifest.captureId.replaceAll(':', '-'),
+      'report.json',
+    );
+    const written = await writePublicReport(report, option('--output') ?? defaultOutput);
+    console.log(`Created initial report with no baseline comparison:\n${written}`);
     return;
   }
   if (command === 'report') {

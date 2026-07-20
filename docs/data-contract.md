@@ -91,6 +91,8 @@ comparable time.
 Contains one snapshot, bounded comparison events, methodology version, overall completeness,
 limitations, and a literal source of `synthetic_fixture` or `curated_authorized_capture`.
 `synthetic` must be true exactly for `synthetic_fixture`; inconsistent labels fail validation.
+An initial report from one snapshot has an empty comparison-event array and an explicit limitation
+that no baseline was supplied; it does not fabricate additions or changes.
 
 ## Compatibility rules
 

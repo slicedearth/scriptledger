@@ -14,6 +14,22 @@ export interface PublicReportOptions {
   limitations?: string[];
 }
 
+export const INITIAL_REPORT_LIMITATION = 'No baseline capture was supplied. This initial report describes one observation and contains no change events.';
+
+export function buildInitialPublicReport(
+  capture: CaptureSnapshot,
+  options: PublicReportOptions,
+): PublicReport {
+  return buildPublicReport(capture, [], {
+    ...options,
+    summary: options.summary ?? 'A bounded initial observation report with no baseline comparison. Findings describe observed evidence and do not label a site safe, compromised, or malicious.',
+    limitations: [
+      INITIAL_REPORT_LIMITATION,
+      ...(options.limitations ?? []),
+    ],
+  });
+}
+
 export function buildPublicReport(
   capture: CaptureSnapshot,
   comparisonEvents: ChangeEvent[],

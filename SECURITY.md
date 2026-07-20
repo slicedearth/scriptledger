@@ -30,6 +30,13 @@ High-priority reports include:
 Expected limitations documented in `docs/limitations.md` are not automatically vulnerabilities,
 but a practical bypass of their mitigations is in scope.
 
+## Automated code scanning
+
+The repository includes a pinned CodeQL workflow for JavaScript and TypeScript. It runs on pushes
+to `main`, pull requests targeting `main`, a weekly schedule, and manual dispatch. Results are
+uploaded to the repository's code-scanning interface with job-scoped permissions. The workflow
+does not read target configuration, captures, or private reports.
+
 ## Safe research
 
 Use only systems you own, systems for which you have explicit permission, or the included local
