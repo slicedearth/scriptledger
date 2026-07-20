@@ -9,17 +9,17 @@ test-results/
 .DS_Store
 
 # Local capture state and generated evidence
-.scriptledger/
-captures/
-reports/
-browser-profiles/
+/.scriptledger/
+/captures/
+/reports/
+/browser-profiles/
 playwright/.cache/
 
 # Personal authorization and target configuration
 targets.yml
 targets.yaml
 targets.json
-targets/
+/targets/
 *.targets.yml
 *.targets.yaml
 !examples/targets.example.yml
