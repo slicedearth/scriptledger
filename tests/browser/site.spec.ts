@@ -44,6 +44,29 @@ test.describe('synthetic static report', () => {
     expect(new Set(sizes).size).toBe(1);
   });
 
+  test('tables scroll within their container without fragmenting labels', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.goto(`${publicReportBase}/origins/`);
+
+    const layout = await page.locator('.table-wrap').evaluate((wrapper) => {
+      const headers = Array.from(wrapper.querySelectorAll('thead th'));
+      const codes = Array.from(wrapper.querySelectorAll('code'));
+      return {
+        documentFitsViewport: document.documentElement.scrollWidth <= window.innerWidth,
+        scrollsHorizontally: wrapper.scrollWidth > wrapper.clientWidth,
+        headersKeepWords: headers.every((header) => getComputedStyle(header).whiteSpace === 'nowrap'),
+        codesKeepValues: codes.every((code) => getComputedStyle(code).whiteSpace === 'nowrap'),
+      };
+    });
+
+    expect(layout).toEqual({
+      documentFitsViewport: true,
+      scrollsHorizontally: true,
+      headersKeepWords: true,
+      codesKeepValues: true,
+    });
+  });
+
   test('graph has a complete tabular alternative', async ({ page }) => {
     await page.goto(`${publicReportBase}/graph/`);
     await expect(page.getByRole('table', { name: 'Every relationship displayed in the graph.' })).toBeVisible();

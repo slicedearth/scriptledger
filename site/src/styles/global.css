@@ -71,10 +71,11 @@ h3 { margin: 0; font-size: 1rem; }
 .state[data-state="third_party"], .state[data-state="matched"] { border-color: #814343; color: #ffb4b4; }
 
 .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); background: var(--panel); }
-table { width: 100%; border-collapse: collapse; min-width: 660px; }
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
 caption { padding: 1rem; color: var(--muted); text-align: left; font-size: .82rem; }
-th, td { padding: .9rem 1rem; border-top: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th, td { padding: .9rem 1rem; border-top: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: normal; word-break: normal; }
 th { color: var(--muted); font: 700 .7rem var(--mono); text-transform: uppercase; letter-spacing: .07em; }
+thead th, .table-wrap code { white-space: nowrap; }
 td { font-size: .9rem; line-height: 1.45; }
 
 .definition-list { display: grid; grid-template-columns: minmax(160px, .38fr) minmax(0, 1fr); border-top: 1px solid var(--line); }
