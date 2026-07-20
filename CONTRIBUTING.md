@@ -23,7 +23,8 @@ resolvers, or the loopback fixture. Do not add a test that contacts the public i
 - Never infer a removal from incomplete comparable evidence.
 - Keep real targets, captures, cookies, browser profiles, secrets, screenshots, and generated reports
   out of commits.
-- Keep the static site synthetic, script-free, analytics-free, and closed to scan requests.
+- Keep the default public site synthetic, and keep both public and local report modes script-free,
+  analytics-free, and closed to scan requests.
 - Document detector provenance and confidence; do not turn uncertain matches into facts.
 - Add a decision record for a material safety, compatibility, or data-model tradeoff.
 

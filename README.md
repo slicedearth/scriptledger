@@ -41,8 +41,9 @@ isolated Playwright collector ──► versioned canonical snapshots
 - `src/collector/` observes one bounded route in a fresh Chromium context without a stored profile.
 - `src/storage/` writes deterministic canonical JSON under the gitignored local data root.
 - `src/diff/` emits explainable events and suppresses unsafe removal claims from partial evidence.
-- `src/reports/` validates the static report input.
-- `site/` prerenders the committed synthetic report to HTML and CSS with no client JavaScript.
+- `src/reports/` validates report input and builds guarded local static output.
+- `site/` prerenders either the committed synthetic report or an explicitly selected local report
+  to HTML and CSS with no client JavaScript.
 
 See [architecture](docs/architecture.md), [data contracts](docs/data-contract.md), and the
 [initial architecture decision](docs/decisions/0001-bounded-static-evidence-pipeline.md).
@@ -111,6 +112,26 @@ comparison completeness, and first-observed timestamps. It refuses incompatible 
 and does not infer removals from relevant partial captures. Supplying a fixed report timestamp
 makes identical report input byte-for-byte deterministic.
 
+## Build a private local report
+
+Turn a validated `PublicReport` into the useful human-readable site without publishing it:
+
+```bash
+npm run cli -- build-report .scriptledger/reports/report.json
+npm run preview:report
+```
+
+The first command writes inert HTML and CSS to `.scriptledger/site/`; the second serves that
+directory only on the local preview address. The builder validates the report, requires its
+`source` and `synthetic` label to agree, and refuses to overwrite an unmarked directory,
+symlink, or path outside a direct child of `.scriptledger/`. An alternate private output can be
+selected with `--output .scriptledger/<name>`.
+
+This command does not capture a site, upload data, or deploy anything. A real local report can
+reveal routes, origins, component versions, and security controls even though ScriptLedger
+minimizes retained data. Keep it private unless you have reviewed every page and deliberately
+decided to publish it.
+
 ## Data handling
 
 Retained evidence is deliberately narrow: normalized scheme/origin, optional query-free path, path
@@ -134,9 +155,11 @@ access to sensitive networks. See [threat model](docs/threat-model.md) and
 
 ## Static deployment
 
-`npm run build` writes the public site to `site/build/`. The committed fixture is synthetic and uses
-reserved `.invalid` names. The output has no scanning capability, analytics, remote fonts, target
-content, target favicon, live target links, or client JavaScript; its CSP sets `connect-src 'none'`.
+`npm run build` always writes the public synthetic site to `site/build/` unless an operator
+explicitly invokes the separate local report builder. The committed fixture uses reserved
+`.invalid` names. Both output modes have no scanning capability, analytics, remote fonts, target
+content, target favicon, live target links, or client JavaScript; their CSP sets
+`connect-src 'none'`.
 
 The optional Pages workflow builds only this committed fixture and is manual by default. Enabling a
 hosting product or publishing any real report is a separate operator decision.

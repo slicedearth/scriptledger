@@ -1,7 +1,7 @@
 <script lang="ts">
   import PageIntro from '$lib/components/PageIntro.svelte';
   import State from '$lib/components/State.svelte';
-  import { pages } from '$lib/demo-report.js';
+  import { pages } from '$lib/report.js';
 
   const policies = pages.flatMap((page) => page.policies.map((entry) => ({ route: page.route, ...entry })));
   const integrity = pages.flatMap((page) => page.resources.filter((resource) => resource.integrity).map((resource) => ({ route: page.route, resource })));

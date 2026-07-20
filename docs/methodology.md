@@ -57,6 +57,7 @@ language should use forms such as “First observed in the 20 July 2026 capture.
 
 ## 6. Publish deliberately
 
-Local reports remain under `.scriptledger/`. The committed public site uses a fixed synthetic
-`PublicReport` with reserved domains. Publication of any authorized capture requires separate human
-review for scope, consent, infrastructure sensitivity, completeness, and accidental secrets.
+Validated local reports can be rendered under `.scriptledger/` with `build-report`. The committed
+public build still uses a fixed synthetic `PublicReport` with reserved domains. Publication of any
+authorized capture requires separate human review for scope, consent, infrastructure sensitivity,
+completeness, and accidental secrets.

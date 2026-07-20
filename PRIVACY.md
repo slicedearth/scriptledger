@@ -31,13 +31,14 @@ confirmed. Third-party bodies are not fetched merely to calculate hashes.
 
 ## Storage and deletion
 
-Generated state defaults to `.scriptledger/` in the current project and may be redirected with CLI
-output options. Target allowlists and generated capture/report directories are gitignored.
+Generated state defaults to `.scriptledger/` in the current project. Target allowlists, captures,
+report JSON, and generated local report sites are gitignored. A local site may be redirected only
+to a direct child of that data root.
 
-To delete local evidence, remove the specific files beneath `.scriptledger/captures/` and
-`.scriptledger/reports/`, or remove the `.scriptledger/` directory after confirming the path. Also
-remove any operator-created backup or exported report separately. ScriptLedger has no cloud account
-or server-side copy to delete.
+To delete local evidence, remove the specific files beneath `.scriptledger/captures/`,
+`.scriptledger/reports/`, and `.scriptledger/site/`, or remove the `.scriptledger/` directory
+after confirming the path. Also remove any operator-created backup, alternate output, or exported
+report separately. ScriptLedger has no cloud account or server-side copy to delete.
 
 ## Public synthetic data
 

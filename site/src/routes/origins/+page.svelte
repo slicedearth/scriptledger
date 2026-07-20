@@ -1,7 +1,7 @@
 <script lang="ts">
   import PageIntro from '$lib/components/PageIntro.svelte';
   import State from '$lib/components/State.svelte';
-  import { origins } from '$lib/demo-report.js';
+  import { origins } from '$lib/report.js';
 </script>
 
 <svelte:head><title>Origin inventory · ScriptLedger</title></svelte:head>
@@ -10,7 +10,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (the scrollable table region must be keyboard-focusable) -->
 <div class="table-wrap" role="region" aria-label="Observed origins" tabindex="0">
   <table>
-    <caption>Normalized origins observed across the committed synthetic routes.</caption>
+    <caption>Normalized origins observed across the captured routes.</caption>
     <thead><tr><th scope="col">Origin</th><th scope="col">Classification</th><th scope="col">Routes</th><th scope="col">Requests</th></tr></thead>
     <tbody>
       {#each origins as origin}

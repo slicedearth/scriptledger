@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { report } from '$lib/report.js';
   import '../styles/global.css';
   let { children } = $props();
 
@@ -29,9 +30,9 @@
   </nav>
 </header>
 
-<aside class="fixture-banner" aria-label="Fixture status">
+<aside class="fixture-banner" aria-label="Report status">
   <span class="signal" aria-hidden="true"></span>
-  Synthetic fixture · no live scan · reserved domains only
+  {report.synthetic ? 'Synthetic fixture · no live scan · reserved domains only' : 'Local report · no live scan · static evidence only'}
 </aside>
 
 <main id="main" tabindex="-1">
@@ -47,6 +48,6 @@
     <a href="/methodology/">Methodology</a>
     <a href="/privacy/">Privacy</a>
     <a href="/limitations/">Limitations</a>
-    <a href="/demo/">About this demo</a>
+    <a href="/demo/">About this {report.synthetic ? 'demo' : 'report'}</a>
   </nav>
 </footer>

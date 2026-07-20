@@ -89,8 +89,8 @@ comparable time.
 ### `PublicReport` — `scriptledger.public-report.v1`
 
 Contains one snapshot, bounded comparison events, methodology version, overall completeness,
-limitations, and a literal source of `synthetic_fixture` or `curated_authorized_capture`. `synthetic`
-must be read alongside the source before publication.
+limitations, and a literal source of `synthetic_fixture` or `curated_authorized_capture`.
+`synthetic` must be true exactly for `synthetic_fixture`; inconsistent labels fail validation.
 
 ## Compatibility rules
 

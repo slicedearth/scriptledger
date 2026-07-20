@@ -21,7 +21,7 @@ system, and CI runners are part of the trusted computing base.
 | Data exfiltration | No secrets or stored session, no form interaction, no request bodies retained, public site `connect-src 'none'` | A target can observe the collector's normal page requests and source IP |
 | Report injection | Strict contracts, control stripping and caps, Svelte escaping, no client JS, restrictive CSP, hostile-string browser tests | A future renderer or unsafe HTML feature could reopen this class |
 | Dependency compromise | Exact lockfile, minimal dependencies, local adapters, production audit, SHA-pinned workflow actions | Registry, transitive package, browser, and action compromise cannot be eliminated |
-| Accidental publication | Gitignored captures/targets/reports, synthetic-only site source and CI, no capture artifact upload | An operator can still deliberately stage or copy a real report |
+| Accidental publication | Gitignored captures/targets/reports/local sites, synthetic-only default build and CI, no capture artifact upload | An operator can still deliberately stage or copy a real report |
 | Secret leakage | No credential workflow, ignored `.env`/cookies/storage state/keys, no full headers or bodies, staged-diff review | Secrets embedded in allowed paths or manually curated prose require human review |
 | CI supply-chain risk | Read-only default permissions, locked install, SHA-pinned actions, synthetic/loopback tests, no secrets, explicit timeout | Hosted runner and pinned upstream action remain trusted components |
 

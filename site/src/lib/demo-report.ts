@@ -314,19 +314,3 @@ export const demoReport = PublicReportSchema.parse({
     'Missing evidence is not displayed as a pass.',
   ],
 });
-
-export const pages = demoReport.capture.pages;
-export const events = demoReport.comparisonEvents;
-
-export const origins = [...new Map(pages.flatMap((page) => page.requests).map((entry) => [entry.destination.origin, {
-  origin: entry.destination.origin,
-  classification: entry.classification,
-  routes: [...new Set(pages.filter((page) => page.requests.some((requestEntry) => requestEntry.destination.origin === entry.destination.origin)).map((page) => page.route))],
-  requests: pages.flatMap((page) => page.requests).filter((requestEntry) => requestEntry.destination.origin === entry.destination.origin).length,
-}])).values()].sort((left, right) => left.origin.localeCompare(right.origin));
-
-export const dependencyRows = pages.flatMap((page) => [...new Set(page.requests.map((entry) => entry.destination.origin))].map((origin) => ({ route: page.route, origin })));
-
-export function humanize(value: string): string {
-  return value.replaceAll('_', ' ').replace(/\b\w/gu, (letter) => letter.toUpperCase());
-}

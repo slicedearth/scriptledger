@@ -23,7 +23,8 @@
   an external deployment changed.
 - Snapshot history uses local JSON files and has no scheduler, database, retention policy engine, or
   multi-operator coordination.
-- The public report is synthetic. Publishing real target evidence requires deliberate review and is
-  outside the default workflow.
+- The default public report is synthetic. A private local report can render curated evidence, but
+  it does not make the observation complete or safe to disclose. Publication still requires
+  deliberate review.
 - CycloneDX export is deferred because runtime web artifacts cannot yet be mapped without risking
   incorrect build-time package claims.

@@ -397,7 +397,16 @@ export const PublicReportSchema = z
     methodologyVersion: shortString,
     limitations: z.array(boundedString).max(64),
   })
-  .strict();
+  .strict()
+  .superRefine((report, context) => {
+    if (report.synthetic !== (report.source === 'synthetic_fixture')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['synthetic'],
+        message: 'synthetic must be true exactly when source is synthetic_fixture',
+      });
+    }
+  });
 
 export type CaptureConfig = z.infer<typeof CaptureConfigSchema>;
 export type TargetConfig = z.infer<typeof TargetConfigSchema>;

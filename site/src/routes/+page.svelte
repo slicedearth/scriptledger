@@ -1,21 +1,23 @@
 <script lang="ts">
   import State from '$lib/components/State.svelte';
-  import { demoReport, events, origins, pages, humanize } from '$lib/demo-report.js';
+  import { report, events, origins, pages, formatObservationDate, humanize } from '$lib/report.js';
+
+  const latestObservation = events[0]?.firstObservedAt ?? report.capture.observedAt;
 </script>
 
-<svelte:head><title>ScriptLedger — know what your pages depend on</title></svelte:head>
+<svelte:head><title>{report.synthetic ? 'ScriptLedger — know what your pages depend on' : `${report.title} · ScriptLedger`}</title></svelte:head>
 
 <section class="hero-grid" aria-labelledby="hero-title">
   <div class="hero-copy">
-    <p class="eyebrow">Web supply-chain evidence</p>
+    <p class="eyebrow">{report.synthetic ? 'Web supply-chain evidence' : report.title}</p>
     <h1 id="hero-title">Know what your pages depend on.</h1>
-    <p class="lede">ScriptLedger records the scripts, frames, workers, origins, and browser policies involved in rendering pages you are authorized to assess—then explains what changed.</p>
+    <p class="lede">{report.synthetic ? 'ScriptLedger records the scripts, frames, workers, origins, and browser policies involved in rendering pages you are authorized to assess—then explains what changed.' : report.summary}</p>
     <div class="actions">
       <a class="button" href="/changes/">Review trust changes</a>
-      <a class="button secondary" href="/demo/">Understand the fixture</a>
+      <a class="button secondary" href="/demo/">Understand this {report.synthetic ? 'fixture' : 'report'}</a>
     </div>
   </div>
-  <div class="hero-aside" aria-label="Synthetic report summary">
+  <div class="hero-aside" aria-label="Report summary">
     <div class="metric"><strong>{pages.length}</strong><span>Routes observed</span></div>
     <div class="metric"><strong>{origins.length}</strong><span>Origins involved</span></div>
     <div class="metric"><strong>{events.length}</strong><span>Explainable changes</span></div>
@@ -25,7 +27,7 @@
 <section aria-labelledby="latest-heading">
   <div class="section-heading">
     <h2 id="latest-heading">Recent trust changes</h2>
-    <p>First observed 20 Jul 2026</p>
+    <p>First observed {formatObservationDate(latestObservation)}</p>
   </div>
   <div class="card-grid">
     {#each events.slice(0, 3) as event}
@@ -41,7 +43,7 @@
 <section aria-labelledby="ledger-heading">
   <div class="section-heading">
     <h2 id="ledger-heading">One ledger, three evidence layers</h2>
-    <p>{demoReport.methodologyVersion}</p>
+    <p>{report.methodologyVersion}</p>
   </div>
   <div class="card-grid">
     <article class="card"><p class="meta">01 · Observe</p><h3>Browser reality</h3><p>Capture bounded network destinations, DOM declarations, security headers, and complete eligible hashes without retaining page content.</p></article>

@@ -18,4 +18,12 @@ describe('public demo fixture', () => {
     expect(origins.every((origin) => new URL(origin).hostname.endsWith('.invalid'))).toBe(true);
     expect(demoReport.capture.vulnerabilities.every((entry) => entry.advisoryId.startsWith('OSV-SYNTHETIC-'))).toBe(true);
   });
+
+  it('rejects a report whose source and synthetic label disagree', () => {
+    expect(() => PublicReportSchema.parse({
+      ...demoReport,
+      source: 'curated_authorized_capture',
+      synthetic: true,
+    })).toThrow('synthetic must be true exactly when source is synthetic_fixture');
+  });
 });

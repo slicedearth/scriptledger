@@ -1,6 +1,6 @@
 <script lang="ts">
   import PageIntro from '$lib/components/PageIntro.svelte';
-  import { dependencyRows, pages } from '$lib/demo-report.js';
+  import { dependencyRows, pages } from '$lib/report.js';
 </script>
 
 <svelte:head><title>Dependency graph · ScriptLedger</title></svelte:head>

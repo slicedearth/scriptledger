@@ -6,6 +6,7 @@ import { loadCaptureConfig } from '../contracts/config.js';
 import { PublicReportSchema } from '../contracts/index.js';
 import { compareSnapshots } from '../diff/compare.js';
 import { buildPublicReport } from '../reports/public-report.js';
+import { buildLocalReportSite } from '../reports/static-site.js';
 import { readSnapshot, writePublicReport, writeSnapshot } from '../storage/files.js';
 
 function usage(): never {
@@ -13,7 +14,8 @@ function usage(): never {
   scriptledger validate <targets.yml>
   scriptledger capture <targets.yml> [--output <directory>]
   scriptledger compare <before.json> <after.json> [--output <report.json>] [--generated-at <ISO timestamp>]
-  scriptledger report <public-report.json>`);
+  scriptledger report <public-report.json>
+  scriptledger build-report <public-report.json> [--output <.scriptledger/name>]`);
   process.exit(2);
 }
 
@@ -64,6 +66,14 @@ async function main(): Promise<void> {
     if (!path) usage();
     const report = PublicReportSchema.parse(JSON.parse(await readFile(resolve(path), 'utf8')));
     console.log(`${report.title}\n${report.comparisonEvents.length} change event(s); completeness: ${report.completeness}.`);
+    return;
+  }
+  if (command === 'build-report') {
+    const path = positionals[0];
+    if (!path) usage();
+    const output = option('--output');
+    const result = await buildLocalReportSite(path, output ? { output } : {});
+    console.log('Built local static report for ' + result.report.title + ':\n' + result.outputPath);
     return;
   }
   usage();

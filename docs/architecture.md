@@ -23,8 +23,8 @@ There is no runtime database. Canonical JSON files form the local evidence ledge
 | `src/security/osv-adapter.ts` | Optional advisory query | Disabled by default; sends package/version only |
 | `src/storage` | Canonical sort/serialize and gitignored writes | Keeps timestamps outside derived evidence identities |
 | `src/diff` | Comparable evidence and explainable events | Downgrades or refuses incomplete comparisons |
-| `src/reports` | Validated report assembly | Allows synthetic or deliberately curated input only |
-| `site` | Static human-readable evidence | Contains committed synthetic data and no client JS |
+| `src/reports` | Validated report assembly and guarded local builds | Allows synthetic or deliberately curated input only |
+| `site` | Static human-readable evidence | Uses an explicit build input and emits no client JS |
 
 ## Capture sequence
 
@@ -69,8 +69,15 @@ values pass through Svelte's escaped interpolation. Tables use keyboard-focusabl
 the dependency graph has a complete table alternative, status text accompanies color, and the CSS
 contains 320-pixel overflow and reduced-motion accommodations.
 
+The ordinary build resolves a virtual report module to the committed synthetic fixture. The
+`build-report` command instead validates an operator-selected `PublicReport`, passes its absolute
+path only to an isolated build process, and writes the result through a unique staging directory
+under `.scriptledger/`. Replacement requires an exact ownership marker; unrelated directories
+and symlinks fail closed.
+
 ## Deployment separation
 
 CI installs from the lockfile and runs only synthetic or loopback fixtures. The optional manual
 Pages workflow builds `site/build/` from committed synthetic input. Neither workflow reads target
-configuration, runs a live capture, uses a secret, nor uploads local capture artifacts.
+configuration, runs a live capture, uses a secret, nor uploads local capture artifacts. Private
+report builds are an operator-initiated local action and are not a CI deployment input.

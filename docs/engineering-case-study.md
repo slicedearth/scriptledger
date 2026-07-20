@@ -45,10 +45,11 @@ route, evidence references, and two observation times rather than an unexplained
 
 ## Static publication reduced the public attack surface
 
-The report application prerenders a synthetic Zod-validated fixture into HTML and CSS. There is no
-client bundle, analytics endpoint, external font, live target link, or scan form. A restrictive CSP
-and browser tests for injection, remote requests, accessibility, keyboard operation, and 320-pixel
-overflow protect the presentation boundary.
+The report application prerenders either the default synthetic fixture or an explicitly selected,
+Zod-validated local report into HTML and CSS. Local output stays gitignored and replacement requires
+an ownership marker. There is no client bundle, analytics endpoint, external font, live target link,
+or scan form. A restrictive CSP and browser tests for injection, remote requests, accessibility,
+keyboard operation, and 320-pixel overflow protect the presentation boundary.
 
 ## Component detection needed provenance
 
