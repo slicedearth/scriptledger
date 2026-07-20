@@ -24,11 +24,17 @@ function ownedBuildDirectory(configuredPath, parentName) {
 
 const reportOutput = ownedBuildDirectory(process.env.SCRIPTLEDGER_REPORT_OUTPUT, 'build-staging');
 const buildCache = ownedBuildDirectory(process.env.SCRIPTLEDGER_BUILD_CACHE, 'build-cache');
+const basePath = process.env.SCRIPTLEDGER_BASE_PATH ?? '';
+
+if (basePath && !/^\/[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)*$/u.test(basePath)) {
+  throw new Error(`Invalid ScriptLedger base path: ${basePath}`);
+}
 
 export default {
   preprocess: vitePreprocess(),
   kit: {
     ...(buildCache ? { outDir: buildCache } : {}),
+    paths: { base: basePath },
     adapter: adapter({
       ...(reportOutput ? { pages: reportOutput, assets: reportOutput } : {}),
       fallback: undefined,

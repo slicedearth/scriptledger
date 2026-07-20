@@ -14,8 +14,8 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run build && npm run preview',
-      url: 'http://127.0.0.1:4173',
+      command: 'SCRIPTLEDGER_BASE_PATH=/scriptledger npm run build && SCRIPTLEDGER_BASE_PATH=/scriptledger npm run preview',
+      url: 'http://127.0.0.1:4173/scriptledger/',
       reuseExistingServer: false,
       timeout: 30_000,
     },

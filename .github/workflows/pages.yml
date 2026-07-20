@@ -21,6 +21,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - name: Configure Pages artifact
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
       - name: Use Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -32,6 +36,8 @@ jobs:
 
       - name: Build committed synthetic report
         run: npm run build
+        env:
+          SCRIPTLEDGER_BASE_PATH: ${{ steps.pages.outputs.base_path }}
 
       - name: Assert the static site ships no JavaScript
         run: |
@@ -39,9 +45,6 @@ jobs:
             echo 'Unexpected client JavaScript in static build.' >&2
             exit 1
           fi
-
-      - name: Configure Pages artifact
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Upload synthetic site
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

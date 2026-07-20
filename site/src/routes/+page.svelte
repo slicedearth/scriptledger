@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import State from '$lib/components/State.svelte';
   import { report, events, origins, pages, formatObservationDate, humanize } from '$lib/report.js';
 
@@ -13,8 +14,8 @@
     <h1 id="hero-title">Know what your pages depend on.</h1>
     <p class="lede">{report.synthetic ? 'ScriptLedger records the scripts, frames, workers, origins, and browser policies involved in rendering pages you are authorized to assess—then explains what changed.' : report.summary}</p>
     <div class="actions">
-      <a class="button" href="/changes/">Review trust changes</a>
-      <a class="button secondary" href="/demo/">Understand this {report.synthetic ? 'fixture' : 'report'}</a>
+      <a class="button" href={`${base}/changes/`}>Review trust changes</a>
+      <a class="button secondary" href={`${base}/demo/`}>Understand this {report.synthetic ? 'fixture' : 'report'}</a>
     </div>
   </div>
   <div class="hero-aside" aria-label="Report summary">

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import { report } from '$lib/report.js';
   import '../styles/global.css';
   let { children } = $props();
@@ -22,10 +23,10 @@
 
 <a class="skip-link" href="#main">Skip to report</a>
 <header class="site-header">
-  <a class="wordmark" href="/" aria-label="ScriptLedger overview"><span aria-hidden="true">SL//</span> ScriptLedger</a>
+  <a class="wordmark" href={`${base}/`} aria-label="ScriptLedger overview"><span aria-hidden="true">SL//</span> ScriptLedger</a>
   <nav aria-label="Report navigation">
     {#each navigation as item}
-      <a href={item[1]}>{item[0]}</a>
+      <a href={`${base}${item[1]}`}>{item[0]}</a>
     {/each}
   </nav>
 </header>
@@ -45,9 +46,9 @@
     <p>Local collection. Static evidence. Human interpretation.</p>
   </div>
   <nav aria-label="Project information">
-    <a href="/methodology/">Methodology</a>
-    <a href="/privacy/">Privacy</a>
-    <a href="/limitations/">Limitations</a>
-    <a href="/demo/">About this {report.synthetic ? 'demo' : 'report'}</a>
+    <a href={`${base}/methodology/`}>Methodology</a>
+    <a href={`${base}/privacy/`}>Privacy</a>
+    <a href={`${base}/limitations/`}>Limitations</a>
+    <a href={`${base}/demo/`}>About this {report.synthetic ? 'demo' : 'report'}</a>
   </nav>
 </footer>

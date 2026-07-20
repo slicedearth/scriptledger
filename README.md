@@ -184,7 +184,10 @@ content, target favicon, live target links, or client JavaScript; their CSP sets
 `connect-src 'none'`.
 
 The optional Pages workflow builds only this committed fixture and is manual by default. Enabling a
-hosting product or publishing any real report is a separate operator decision.
+hosting product or publishing any real report is a separate operator decision. The workflow reads
+the repository's Pages base path and supplies it to SvelteKit, so navigation remains within a
+project site such as `/scriptledger/` while ordinary local and private-report previews remain
+root-based.
 
 The CodeQL workflow scans JavaScript and TypeScript on pushes to `main`, pull requests, a weekly
 schedule, and manual runs. It uses pinned actions, extended security queries, and job-scoped
