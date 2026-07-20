@@ -1,0 +1,19 @@
+schemaVersion: scriptledger.capture-config.v1
+normalizationVersion: 2026-07-20.1
+targets:
+  - id: documentation-portal
+    origin: https://portal.example.invalid
+    authorizationConfirmed: true
+    routes:
+      - /
+      - /account/help
+    budgets:
+      maxNavigations: 2
+      maxRequestsPerRoute: 80
+      maxRedirects: 4
+      maxPageLifetimeMs: 15000
+      maxTotalObservationBytes: 4194304
+    retainQueryFreePaths: true
+    allowSameOriginHttpFallback: false
+    expectedFirstPartyRegistrableDomains:
+      - example.invalid

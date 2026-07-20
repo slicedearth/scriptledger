@@ -1,0 +1,34 @@
+node_modules/
+dist/
+site/build/
+site/.svelte-kit/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store
+
+# Local capture state and generated evidence
+.scriptledger/
+captures/
+reports/
+browser-profiles/
+playwright/.cache/
+
+# Personal authorization and target configuration
+targets.yml
+targets.yaml
+targets.json
+targets/
+*.targets.yml
+*.targets.yaml
+!examples/targets.example.yml
+
+# Secrets and local runtime state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+cookies.json
+storage-state.json

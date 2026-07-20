@@ -1,0 +1,59 @@
+{
+  "name": "scriptledger",
+  "version": "0.1.0",
+  "description": "Bounded browser-driven web supply-chain observations and static evidence reports",
+  "type": "module",
+  "private": false,
+  "license": "Apache-2.0",
+  "author": "slicedearth",
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11 <13"
+  },
+  "packageManager": "npm@11.17.0",
+  "workspaces": [
+    "site"
+  ],
+  "bin": {
+    "scriptledger": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "npm run build:lib && npm run build --workspace site",
+    "build:lib": "tsc -p tsconfig.build.json",
+    "check": "npm run check --workspace site",
+    "cli": "tsx src/cli/index.ts",
+    "dev": "npm run dev --workspace site",
+    "preview": "npm run preview --workspace site",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit tests/security",
+    "test:integration": "vitest run tests/integration",
+    "test:browser": "playwright test",
+    "test:browser:install": "playwright install chromium",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify": "npm test && npm run typecheck && npm run check && npm run build && npm run test:browser"
+  },
+  "dependencies": {
+    "playwright": "1.61.1",
+    "retire": "5.4.3",
+    "tldts": "7.4.9",
+    "yaml": "2.9.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.61.1",
+    "@types/node": "26.1.1",
+    "@types/ws": "8.18.1",
+    "fast-check": "4.9.0",
+    "tsx": "4.21.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "ws": "8.21.1"
+  }
+}
