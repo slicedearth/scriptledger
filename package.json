@@ -33,6 +33,7 @@
     "preview:report": "tsx scripts/preview-report.ts",
     "prepare:local-report-fixture": "tsx tests/fixtures/prepare-local-report.ts",
     "preview:local-report-fixture": "tsx scripts/preview-report.ts --output .scriptledger/test-site --port 4174",
+    "pretest": "npm run sync --workspace site",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit tests/security",
     "test:integration": "vitest run tests/integration",
