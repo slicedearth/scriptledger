@@ -1,8 +1,9 @@
 import { createServer, type ServerResponse } from 'node:http';
-import { lstat, readFile } from 'node:fs/promises';
+import { lstat } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LOCAL_REPORT_OUTPUT_MARKER } from '../src/reports/static-site.js';
+import { readRegularBytes, readRegularUtf8 } from '../src/storage/safe-file.js';
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -55,8 +56,7 @@ for (const path of [dataRoot, outputPath]) {
   }
 }
 const markerPath = join(outputPath, '.scriptledger-report-output');
-const markerMetadata = await lstat(markerPath);
-if (!markerMetadata.isFile() || markerMetadata.isSymbolicLink() || await readFile(markerPath, 'utf8') !== LOCAL_REPORT_OUTPUT_MARKER) {
+if (await readRegularUtf8(markerPath).catch(() => undefined) !== LOCAL_REPORT_OUTPUT_MARKER) {
   throw new Error('Refusing to preview output without the exact ScriptLedger ownership marker.');
 }
 
@@ -83,12 +83,11 @@ const server = createServer((request, response) => {
       respond(response, 404, 'Not found.\n');
       return;
     }
-    const metadata = await lstat(candidate).catch(() => undefined);
-    if (!metadata?.isFile() || metadata.isSymbolicLink()) {
+    const body = await readRegularBytes(candidate).catch(() => undefined);
+    if (!body) {
       respond(response, 404, 'Not found.\n');
       return;
     }
-    const body = await readFile(candidate);
     response.writeHead(200, {
       'Cache-Control': 'no-store',
       'Content-Length': body.byteLength,

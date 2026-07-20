@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -78,5 +78,18 @@ describe('local static report builder', () => {
 
     await expect(readFile(join(outputPath, 'index.html'), 'utf8')).resolves.toContain('Local report');
     await expect(readFile(join(outputPath, 'stale.html'), 'utf8')).rejects.toThrow();
+  });
+
+  it('refuses a symbolic-link ownership marker', async () => {
+    const outputPath = join(projectRoot, '.scriptledger/site');
+    const markerTarget = join(projectRoot, 'forged-marker');
+    await mkdir(outputPath, { recursive: true });
+    await writeFile(markerTarget, LOCAL_REPORT_OUTPUT_MARKER, 'utf8');
+    await symlink(markerTarget, join(outputPath, '.scriptledger-report-output'));
+    const runBuild = vi.fn(successfulBuild());
+
+    await expect(buildLocalReportSite(reportPath, { projectRoot, runBuild }))
+      .rejects.toThrow('unmarked output directory');
+    expect(runBuild).not.toHaveBeenCalled();
   });
 });

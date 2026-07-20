@@ -3,6 +3,7 @@ import { lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PublicReportSchema, type PublicReport } from '../contracts/index.js';
+import { readRegularUtf8 } from '../storage/safe-file.js';
 
 export const LOCAL_REPORT_OUTPUT_MARKER = 'scriptledger.local-report-output.v1\n';
 
@@ -51,11 +52,12 @@ async function assertReplaceableOutput(outputPath: string): Promise<boolean> {
     throw new Error(`Refusing to replace unsafe output path: ${outputPath}`);
   }
   const markerPath = join(outputPath, '.scriptledger-report-output');
-  const markerMetadata = await lstat(markerPath).catch(() => undefined);
-  if (!markerMetadata?.isFile() || markerMetadata.isSymbolicLink()) {
+  let marker: string;
+  try {
+    marker = await readRegularUtf8(markerPath);
+  } catch {
     throw new Error(`Refusing to replace unmarked output directory: ${outputPath}`);
   }
-  const marker = await readFile(markerPath, 'utf8');
   if (marker !== LOCAL_REPORT_OUTPUT_MARKER) {
     throw new Error(`Refusing to replace output with an unknown marker: ${outputPath}`);
   }
