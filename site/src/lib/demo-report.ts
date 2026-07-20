@@ -1,0 +1,332 @@
+import { PublicReportSchema } from '../../../src/contracts/index.js';
+import { canonicalHash } from '../../../src/storage/canonical.js';
+import { toUrlEvidence } from '../../../src/security/url.js';
+
+const observedAt = '2026-07-20T08:00:00.000Z';
+const previousAt = '2026-07-13T08:00:00.000Z';
+const normalizationVersion = '2026-07-20.1' as const;
+
+const envelope = (source: 'browser_network' | 'browser_dom' | 'response_header' | 'derived' | 'retire_js' | 'osv' | 'synthetic_fixture') => ({
+  normalizationVersion,
+  observedAt,
+  timestampMeaning: source === 'response_header' ? 'response_observed' as const : 'first_observed' as const,
+  source,
+  state: 'success' as const,
+  completeness: 'complete' as const,
+  truncation: { truncated: false },
+});
+
+const request = (id: string, pageId: string, url: string, kind: string, classification: 'first_party_origin' | 'related_first_party_origin' | 'configured_partner' | 'third_party') => ({
+  ...envelope('browser_network'),
+  schemaVersion: 'scriptledger.request-observation.v1' as const,
+  requestId: id,
+  pageId,
+  method: 'GET' as const,
+  resourceType: kind,
+  destination: toUrlEvidence(url, true),
+  registrableDomain: new URL(url).hostname.split('.').slice(-2).join('.'),
+  classification,
+  responseStatus: 200,
+});
+
+const homeRequests = [
+  request('request:home-document', 'page:home', 'https://shop.example.invalid/', 'document', 'first_party_origin'),
+  request('request:home-app', 'page:home', 'https://assets.example.invalid/app.js', 'script', 'related_first_party_origin'),
+  request('request:home-font', 'page:home', 'https://assets.example.invalid/fonts/ledger.woff2', 'font', 'related_first_party_origin'),
+  request('request:home-consent', 'page:home', 'https://consent.partner.invalid/v2/banner.js', 'script', 'configured_partner'),
+  request('request:home-long-host', 'page:home', 'https://this-is-an-intentionally-long-hostname-segment-for-layout-validation.assets.example.invalid/widget.js', 'script', 'related_first_party_origin'),
+];
+
+const checkoutRequests = [
+  request('request:checkout-document', 'page:checkout', 'https://shop.example.invalid/checkout', 'document', 'first_party_origin'),
+  request('request:checkout-app', 'page:checkout', 'https://assets.example.invalid/app.js', 'script', 'related_first_party_origin'),
+  request('request:checkout-payment', 'page:checkout', 'https://payments.partner.invalid/sdk.js', 'script', 'configured_partner'),
+  request('request:checkout-telemetry', 'page:checkout', 'https://telemetry.third-party.invalid/collect', 'fetch', 'third_party'),
+];
+
+const policy = (pageId: string, type: 'content-security-policy' | 'content-security-policy-report-only' | 'referrer-policy', value: string) => ({
+  ...envelope('response_header'),
+  schemaVersion: 'scriptledger.policy-observation.v1' as const,
+  pageId,
+  policyType: type,
+  delivery: 'response_header' as const,
+  value,
+  present: true,
+});
+
+const snapshot = {
+  schemaVersion: 'scriptledger.capture-snapshot.v1' as const,
+  normalizationVersion,
+  observedAt,
+  timestampMeaning: 'capture_started' as const,
+  source: 'synthetic_fixture' as const,
+  state: 'success' as const,
+  completeness: 'complete' as const,
+  truncation: { truncated: false },
+  manifest: {
+    schemaVersion: 'scriptledger.capture-manifest.v1' as const,
+    normalizationVersion,
+    observedAt,
+    timestampMeaning: 'capture_started' as const,
+    source: 'synthetic_fixture' as const,
+    state: 'success' as const,
+    completeness: 'complete' as const,
+    truncation: { truncated: false },
+    captureId: 'capture:synthetic-20260720',
+    targetId: 'synthetic-shop',
+    collectorVersion: '0.1.0',
+    browserName: 'chromium' as const,
+    browserVersion: 'synthetic-fixture',
+    configurationHash: canonicalHash({ target: 'synthetic-shop' }),
+    routeSetHash: canonicalHash(['/', '/checkout']),
+    routesRequested: 2,
+    routesCompleted: 2,
+    limitsReached: [],
+  },
+  pages: [
+    {
+      ...envelope('synthetic_fixture'),
+      schemaVersion: 'scriptledger.page-observation.v1' as const,
+      pageId: 'page:home',
+      targetId: 'synthetic-shop',
+      route: '/',
+      finalDestination: toUrlEvidence('https://shop.example.invalid/', true),
+      redirectCount: 0,
+      requests: homeRequests,
+      resources: [{
+        ...envelope('browser_network'),
+        schemaVersion: 'scriptledger.resource-observation.v1' as const,
+        resourceId: 'resource:home-app',
+        pageId: 'page:home',
+        requestId: 'request:home-app',
+        kind: 'script' as const,
+        destination: toUrlEvidence('https://assets.example.invalid/app.js', true),
+        mimeType: 'text/javascript',
+        responseStatus: 200,
+        transferredBytes: 48321,
+        integrity: {
+          ...envelope('browser_network'),
+          schemaVersion: 'scriptledger.integrity-observation.v1' as const,
+          resourceId: 'resource:home-app',
+          integrityAttribute: 'sha384-synthetic-example',
+          contentHash: `sha256:${'a'.repeat(64)}`,
+          hashState: 'complete' as const,
+          eligibilityReason: 'Complete bounded synthetic first-party resource.',
+        },
+      }],
+      scripts: [{
+        ...envelope('browser_dom'),
+        schemaVersion: 'scriptledger.script-observation.v1' as const,
+        scriptId: 'script:home-app',
+        pageId: 'page:home',
+        requestId: 'request:home-app',
+        destination: toUrlEvidence('https://assets.example.invalid/app.js', true),
+        inline: false,
+        module: true,
+        async: false,
+        defer: false,
+        integrityAttribute: 'sha384-synthetic-example',
+      }],
+      frames: [],
+      workers: [],
+      websockets: [],
+      policies: [
+        policy('page:home', 'content-security-policy', "default-src 'self'; script-src 'self' https://assets.example.invalid https://consent.partner.invalid; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"),
+        policy('page:home', 'referrer-policy', 'no-referrer'),
+      ],
+      popupAttempts: 0,
+      requestCount: homeRequests.length,
+      retainedObservationBytes: 18432,
+      limitations: [],
+    },
+    {
+      ...envelope('synthetic_fixture'),
+      schemaVersion: 'scriptledger.page-observation.v1' as const,
+      pageId: 'page:checkout',
+      targetId: 'synthetic-shop',
+      route: '/checkout',
+      finalDestination: toUrlEvidence('https://shop.example.invalid/checkout', true),
+      redirectCount: 0,
+      requests: checkoutRequests,
+      resources: [{
+        ...envelope('browser_network'),
+        schemaVersion: 'scriptledger.resource-observation.v1' as const,
+        resourceId: 'resource:payment-sdk',
+        pageId: 'page:checkout',
+        requestId: 'request:checkout-payment',
+        kind: 'script' as const,
+        destination: toUrlEvidence('https://payments.partner.invalid/sdk.js', true),
+        mimeType: 'text/javascript',
+        responseStatus: 200,
+        integrity: {
+          ...envelope('browser_network'),
+          schemaVersion: 'scriptledger.integrity-observation.v1' as const,
+          resourceId: 'resource:payment-sdk',
+          hashState: 'ineligible' as const,
+          eligibilityReason: 'Third-party response bodies are not retained solely for hashing.',
+        },
+      }],
+      scripts: [{
+        ...envelope('browser_dom'),
+        schemaVersion: 'scriptledger.script-observation.v1' as const,
+        scriptId: 'script:payment-sdk',
+        pageId: 'page:checkout',
+        requestId: 'request:checkout-payment',
+        destination: toUrlEvidence('https://payments.partner.invalid/sdk.js', true),
+        inline: false,
+        module: false,
+        async: true,
+        defer: false,
+      }],
+      frames: [{
+        ...envelope('browser_dom'),
+        schemaVersion: 'scriptledger.frame-observation.v1' as const,
+        frameId: 'frame:payment-entry',
+        pageId: 'page:checkout',
+        destination: toUrlEvidence('https://payments.partner.invalid/secure-entry', true),
+        namePresent: true,
+        sandboxTokens: ['allow-forms', 'allow-scripts'],
+      }],
+      workers: [],
+      websockets: [{
+        ...envelope('browser_network'),
+        schemaVersion: 'scriptledger.websocket-observation.v1' as const,
+        websocketId: 'websocket:telemetry',
+        pageId: 'page:checkout',
+        destination: toUrlEvidence('wss://telemetry.third-party.invalid/session', true),
+        framesRetained: false as const,
+      }],
+      policies: [
+        policy('page:checkout', 'content-security-policy', "default-src 'self'; script-src 'self' https://assets.example.invalid https://payments.partner.invalid; connect-src 'self' wss://telemetry.third-party.invalid; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"),
+        policy('page:checkout', 'content-security-policy-report-only', "script-src 'self' https://telemetry.third-party.invalid"),
+      ],
+      popupAttempts: 0,
+      requestCount: checkoutRequests.length,
+      retainedObservationBytes: 24176,
+      limitations: ['Third-party script content was not retained or hashed.'],
+    },
+  ],
+  components: [
+    {
+      ...envelope('retire_js'),
+      schemaVersion: 'scriptledger.component-identification.v1' as const,
+      componentId: 'component:alpinejs-3-14-0',
+      resourceId: 'resource:home-app',
+      detector: 'retire.js' as const,
+      detectorVersion: '5.4.3',
+      identificationMethod: 'content_signature' as const,
+      component: 'alpinejs',
+      version: '3.14.0',
+      confidence: 'high' as const,
+      evidenceType: 'synthetic complete content signature',
+      limitations: ['Synthetic identification for interface demonstration.'],
+    },
+    {
+      ...envelope('retire_js'),
+      schemaVersion: 'scriptledger.component-identification.v1' as const,
+      componentId: 'component:payment-sdk',
+      resourceId: 'resource:payment-sdk',
+      detector: 'retire.js' as const,
+      detectorVersion: '5.4.3',
+      identificationMethod: 'uri_pattern' as const,
+      component: 'payment-sdk',
+      version: '2.8.4',
+      confidence: 'low' as const,
+      evidenceType: 'synthetic URI pattern',
+      limitations: ['Version inferred from a URI pattern and not verified against content.'],
+    },
+    {
+      ...envelope('retire_js'),
+      schemaVersion: 'scriptledger.component-identification.v1' as const,
+      componentId: 'component:escaping-fixture',
+      resourceId: 'resource:home-app',
+      detector: 'retire.js' as const,
+      detectorVersion: '5.4.3',
+      identificationMethod: 'uri_pattern' as const,
+      component: '<img src=x onerror=globalThis.__scriptledgerInjected=true>',
+      confidence: 'low' as const,
+      evidenceType: 'synthetic escaping fixture',
+      limitations: ['Malicious-looking text is included to verify output escaping.'],
+    },
+  ],
+  vulnerabilities: [{
+    ...envelope('osv'),
+    schemaVersion: 'scriptledger.vulnerability-observation.v1' as const,
+    vulnerabilityId: 'vulnerability:synthetic-2026-0001',
+    componentId: 'component:alpinejs-3-14-0',
+    advisoryId: 'OSV-SYNTHETIC-2026-0001',
+    summary: 'Synthetic advisory used only to demonstrate evidence states.',
+    affected: true,
+    lookupState: 'matched' as const,
+    database: 'OSV' as const,
+  }],
+  dependencyEdges: [...homeRequests, ...checkoutRequests].map((entry) => ({
+    ...envelope('derived'),
+    schemaVersion: 'scriptledger.dependency-edge.v1' as const,
+    edgeId: `edge:${entry.requestId.replace('request:', '')}`,
+    pageId: entry.pageId,
+    from: entry.pageId,
+    to: `origin:${canonicalHash(entry.destination.origin).slice(7, 23)}`,
+    relationship: 'requested' as const,
+    evidenceReferences: [entry.requestId],
+  })),
+};
+
+const change = (eventId: string, eventType: 'third_party_origin_added' | 'websocket_destination_added' | 'csp_script_source_added' | 'sri_added' | 'vulnerability_appeared', route: string, reason: string, evidenceReferences: string[], before?: unknown, after?: unknown) => ({
+  ...envelope('derived'),
+  schemaVersion: 'scriptledger.change-event.v1' as const,
+  eventId,
+  eventType,
+  route,
+  ...(before === undefined ? {} : { before }),
+  ...(after === undefined ? {} : { after }),
+  reason,
+  evidenceReferences,
+  comparisonCompleteness: 'complete' as const,
+  detectorVersion: 'scriptledger.diff.v1',
+  firstObservedAt: observedAt,
+  previousComparableObservedAt: previousAt,
+});
+
+export const demoReport = PublicReportSchema.parse({
+  schemaVersion: 'scriptledger.public-report.v1',
+  normalizationVersion,
+  generatedAt: '2026-07-20T09:00:00.000Z',
+  timestampMeaning: 'report_generated',
+  source: 'synthetic_fixture',
+  synthetic: true,
+  completeness: 'complete',
+  truncation: { truncated: false },
+  title: 'Synthetic storefront dependency ledger',
+  summary: 'A fixed demonstration of route dependencies and explainable trust changes. It contains no observation of a real website.',
+  capture: snapshot,
+  comparisonEvents: [
+    change('event:telemetry-origin', 'third_party_origin_added', '/checkout', 'A third-party telemetry origin was first observed on the checkout route.', ['request:checkout-telemetry'], undefined, 'https://telemetry.third-party.invalid'),
+    change('event:telemetry-socket', 'websocket_destination_added', '/checkout', 'A WebSocket destination was first observed; frame contents were not retained.', ['websocket:telemetry'], undefined, 'wss://telemetry.third-party.invalid'),
+    change('event:csp-source', 'csp_script_source_added', '/checkout', 'script-src gained the synthetic payments partner origin.', ['page:checkout:content-security-policy'], ["'self'", 'https://assets.example.invalid'], ["'self'", 'https://assets.example.invalid', 'https://payments.partner.invalid']),
+    change('event:sri-home', 'sri_added', '/', 'An integrity attribute was added to the stable first-party application script.', ['resource:home-app'], undefined, 'sha384-synthetic-example'),
+    change('event:synthetic-advisory', 'vulnerability_appeared', '/', 'A synthetic advisory was associated with a high-confidence component fixture.', ['vulnerability:synthetic-2026-0001'], undefined, 'OSV-SYNTHETIC-2026-0001'),
+  ],
+  methodologyVersion: 'scriptledger.methodology.v1',
+  limitations: [
+    'Every host, component match, and advisory on this site is synthetic.',
+    'A browser observation is time-bounded and is not a complete network sandbox.',
+    'Missing evidence is not displayed as a pass.',
+  ],
+});
+
+export const pages = demoReport.capture.pages;
+export const events = demoReport.comparisonEvents;
+
+export const origins = [...new Map(pages.flatMap((page) => page.requests).map((entry) => [entry.destination.origin, {
+  origin: entry.destination.origin,
+  classification: entry.classification,
+  routes: [...new Set(pages.filter((page) => page.requests.some((requestEntry) => requestEntry.destination.origin === entry.destination.origin)).map((page) => page.route))],
+  requests: pages.flatMap((page) => page.requests).filter((requestEntry) => requestEntry.destination.origin === entry.destination.origin).length,
+}])).values()].sort((left, right) => left.origin.localeCompare(right.origin));
+
+export const dependencyRows = pages.flatMap((page) => [...new Set(page.requests.map((entry) => entry.destination.origin))].map((origin) => ({ route: page.route, origin })));
+
+export function humanize(value: string): string {
+  return value.replaceAll('_', ' ').replace(/\b\w/gu, (letter) => letter.toUpperCase());
+}

@@ -39,6 +39,8 @@ describe('address safety', () => {
     const guard = new DestinationGuard({ resolver: async () => [{ address: '10.0.0.4', family: 4 }] });
     await expect(guard.assertAllowed('https://user:secret@example.com/')).rejects.toThrow(/Credentials/u);
     await expect(guard.assertAllowed('file:///etc/passwd')).rejects.toThrow(/scheme/u);
+    await expect(guard.assertAllowed('javascript:alert(1)')).rejects.toThrow(/scheme/u);
+    await expect(guard.assertAllowed('data:text/html,fixture')).rejects.toThrow(/scheme/u);
     await expect(guard.assertAllowed('https://localhost/')).rejects.toThrow(/Localhost/u);
     await expect(guard.assertAllowed('https://example.com/')).rejects.toThrow(/Non-public DNS/u);
   });
